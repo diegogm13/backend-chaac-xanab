@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Put, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { AdminComprasService } from './admin-compras.service';
 import { UpdateCompraStatusDto, QueryComprasDto } from './dto/admin-compra.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,6 +16,7 @@ export class AdminComprasController {
     return this.adminComprasService.findAll(query);
   }
 
+  @Put(':id/status')
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateCompraStatusDto) {
     return this.adminComprasService.updateStatus(id, dto);

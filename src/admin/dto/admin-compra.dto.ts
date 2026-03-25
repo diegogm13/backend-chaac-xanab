@@ -1,6 +1,6 @@
 import { IsIn, IsOptional, IsString } from 'class-validator';
 
-const STATUSES = ['pendiente', 'confirmado', 'enviado', 'entregado', 'cancelado'] as const;
+const STATUSES = ['pendiente', 'procesando', 'confirmado', 'enviado', 'entregado', 'cancelado'] as const;
 
 export class UpdateCompraStatusDto {
   @IsIn(STATUSES)
