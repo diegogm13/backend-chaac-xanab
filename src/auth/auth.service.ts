@@ -6,10 +6,10 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { SupabaseService } from '../supabase/supabase.service';
-import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
@@ -23,7 +23,7 @@ export class AuthService {
   constructor(
     private readonly supabase: SupabaseService,
     private readonly jwt: JwtService,
-    private readonly email: EmailService,
+    private readonly config: ConfigService,
   ) {}
 
   // ─── Registro ────────────────────────────────────────────────────────────────
@@ -37,53 +37,48 @@ export class AuthService {
     if (existing) throw new ConflictException('El correo ya está registrado');
 
     const password_hash = await bcrypt.hash(dto.password, SALT_ROUNDS);
-    const verification_token = crypto.randomBytes(32).toString('hex');
-    const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: user, error } = await this.supabase.db
+    const { error } = await this.supabase.db
       .from('usuarios')
       .insert({
         name: dto.name,
         email: dto.email.toLowerCase(),
         password_hash,
         email_verified: false,
-        verification_token,
-        verification_token_expires,
-      })
-      .select('id, email, name')
-      .single();
+      });
 
     if (error) throw new BadRequestException(error.message);
 
+    // Supabase Auth dispara el correo de verificación
     try {
-      await this.email.sendVerificationEmail(user.email, user.name, verification_token);
-    } catch (emailErr) {
-      console.error('[Auth] Error enviando correo de verificación:', emailErr);
+      const frontendUrl = this.config.get<string>('FRONTEND_URL', 'https://chaacxanab.vercel.app');
+      await this.supabase.auth.auth.signUp({
+        email: dto.email.toLowerCase(),
+        password: crypto.randomUUID(),
+        options: { emailRedirectTo: `${frontendUrl}/verify-email` },
+      });
+    } catch (authErr) {
+      console.error('[Auth] Error al enviar correo de verificación:', authErr);
     }
 
     return { message: 'Te enviamos un correo de verificación. Revisa tu bandeja de entrada.' };
   }
 
   // ─── Verificar email ─────────────────────────────────────────────────────────
-  async verifyEmail(token: string): Promise<{ message: string }> {
-    const { data: user } = await this.supabase.db
-      .from('usuarios')
-      .select('id, email_verified, verification_token_expires')
-      .eq('verification_token', token)
-      .maybeSingle();
+  async verifyEmail(tokenHash: string): Promise<{ message: string }> {
+    const { data, error } = await this.supabase.auth.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: 'signup',
+    });
 
-    if (!user) throw new BadRequestException('Enlace de verificación inválido o ya utilizado.');
-
-    if (user.email_verified) return { message: 'Tu correo ya estaba verificado.' };
-
-    if (new Date(user.verification_token_expires) < new Date()) {
-      throw new BadRequestException('El enlace expiró. Solicita uno nuevo desde la pantalla de login.');
+    if (error || !data.user?.email) {
+      throw new BadRequestException('Enlace de verificación inválido o ya utilizado.');
     }
 
     await this.supabase.db
       .from('usuarios')
-      .update({ email_verified: true, verification_token: null, verification_token_expires: null })
-      .eq('id', user.id);
+      .update({ email_verified: true })
+      .eq('email', data.user.email);
 
     return { message: 'Correo verificado correctamente. Ya puedes iniciar sesión.' };
   }
@@ -92,7 +87,7 @@ export class AuthService {
   async resendVerification(emailAddress: string): Promise<{ message: string }> {
     const { data: user } = await this.supabase.db
       .from('usuarios')
-      .select('id, name, email, email_verified')
+      .select('id, email_verified')
       .eq('email', emailAddress.toLowerCase())
       .maybeSingle();
 
@@ -101,18 +96,13 @@ export class AuthService {
       return { message: 'Si el correo existe y no está verificado, recibirás un nuevo enlace.' };
     }
 
-    const verification_token = crypto.randomBytes(32).toString('hex');
-    const verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-    await this.supabase.db
-      .from('usuarios')
-      .update({ verification_token, verification_token_expires })
-      .eq('id', user.id);
-
     try {
-      await this.email.sendVerificationEmail(user.email, user.name, verification_token);
-    } catch (emailErr) {
-      console.error('[Auth] Error reenviando correo:', emailErr);
+      await this.supabase.auth.auth.resend({
+        type: 'signup',
+        email: emailAddress.toLowerCase(),
+      });
+    } catch (authErr) {
+      console.error('[Auth] Error reenviando verificación:', authErr);
     }
 
     return { message: 'Si el correo existe y no está verificado, recibirás un nuevo enlace.' };
