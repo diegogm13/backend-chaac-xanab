@@ -55,7 +55,11 @@ export class AuthService {
 
     if (error) throw new BadRequestException(error.message);
 
-    await this.email.sendVerificationEmail(user.email, user.name, verification_token);
+    try {
+      await this.email.sendVerificationEmail(user.email, user.name, verification_token);
+    } catch (emailErr) {
+      console.error('[Auth] Error enviando correo de verificación:', emailErr);
+    }
 
     return { message: 'Te enviamos un correo de verificación. Revisa tu bandeja de entrada.' };
   }
@@ -105,7 +109,11 @@ export class AuthService {
       .update({ verification_token, verification_token_expires })
       .eq('id', user.id);
 
-    await this.email.sendVerificationEmail(user.email, user.name, verification_token);
+    try {
+      await this.email.sendVerificationEmail(user.email, user.name, verification_token);
+    } catch (emailErr) {
+      console.error('[Auth] Error reenviando correo:', emailErr);
+    }
 
     return { message: 'Si el correo existe y no está verificado, recibirás un nuevo enlace.' };
   }
