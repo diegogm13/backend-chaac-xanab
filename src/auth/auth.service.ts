@@ -83,6 +83,22 @@ export class AuthService {
     return { message: 'Correo verificado correctamente. Ya puedes iniciar sesión.' };
   }
 
+  // ─── Verificar email por access_token (flujo Supabase hash redirect) ─────────
+  async verifyEmailByToken(accessToken: string): Promise<{ message: string }> {
+    const { data, error } = await this.supabase.auth.auth.getUser(accessToken);
+
+    if (error || !data.user?.email) {
+      throw new BadRequestException('Token de verificación inválido o expirado.');
+    }
+
+    await this.supabase.db
+      .from('usuarios')
+      .update({ email_verified: true })
+      .eq('email', data.user.email);
+
+    return { message: 'Correo verificado correctamente. Ya puedes iniciar sesión.' };
+  }
+
   // ─── Reenviar verificación ───────────────────────────────────────────────────
   async resendVerification(emailAddress: string): Promise<{ message: string }> {
     const { data: user } = await this.supabase.db

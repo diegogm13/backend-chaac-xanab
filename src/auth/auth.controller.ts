@@ -22,6 +22,11 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  @Post('verify-email-token')
+  verifyEmailByToken(@Body('accessToken') accessToken: string) {
+    return this.authService.verifyEmailByToken(accessToken);
+  }
+
   @Post('resend-verification')
   resendVerification(@Body('email') email: string) {
     return this.authService.resendVerification(email);
