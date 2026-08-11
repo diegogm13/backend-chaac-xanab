@@ -8,10 +8,13 @@ import { AdminCategoriasController } from './admin-categorias.controller';
 import { AdminComprasController } from './admin-compras.controller';
 import { AdminUsuariosController } from './admin-usuarios.controller';
 import { AuthModule } from '../auth/auth.module';
+import { RolesModule } from '../roles/roles.module';
+import { BitacoraModule } from '../bitacora/bitacora.module';
 import { CacheService } from '../cache/cache.service';
+import { ElasticsearchModule } from '../elasticsearch/elasticsearch.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RolesModule, BitacoraModule, ElasticsearchModule],
   controllers: [
     AdminProductosController,
     AdminCategoriasController,

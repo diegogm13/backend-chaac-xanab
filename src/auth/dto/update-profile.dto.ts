@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsNotEmpty, IsStrongPassword } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -16,7 +16,6 @@ export class ChangePasswordDto {
   @IsNotEmpty()
   currentPassword: string;
 
-  @IsString()
-  @IsNotEmpty()
+  @IsStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
   newPassword: string;
 }

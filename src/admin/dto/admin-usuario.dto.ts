@@ -1,7 +1,10 @@
-import { IsIn, IsEmail, IsNotEmpty, IsString, IsOptional, MinLength } from 'class-validator';
+import {
+  IsEmail, IsNotEmpty, IsString, IsOptional, IsBoolean, IsStrongPassword,
+} from 'class-validator';
 
 export class UpdateRoleDto {
-  @IsIn(['customer', 'admin'])
+  @IsString()
+  @IsNotEmpty()
   role: string;
 }
 
@@ -13,12 +16,11 @@ export class CreateAdminUserDto {
   @IsEmail()
   email: string;
 
-  @IsString()
-  @MinLength(6)
+  @IsStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
   password: string;
 
   @IsOptional()
-  @IsIn(['customer', 'admin'])
+  @IsString()
   role?: string;
 }
 
@@ -33,6 +35,11 @@ export class UpdateAdminUserDto {
   email?: string;
 
   @IsOptional()
-  @IsIn(['customer', 'admin'])
+  @IsString()
   role?: string;
+}
+
+export class UpdateEstadoDto {
+  @IsBoolean()
+  activo: boolean;
 }

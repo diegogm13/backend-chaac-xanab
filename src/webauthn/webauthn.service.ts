@@ -194,11 +194,14 @@ export class WebAuthnService {
     // Verificar usuario y credencial
     const { data: user } = await this.supabase.db
       .from('usuarios')
-      .select('id')
+      .select('id, activo, deleted_at')
       .eq('email', dto.email.toLowerCase())
       .maybeSingle();
 
     if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (user.deleted_at || !user.activo) {
+      throw new BadRequestException('Esta cuenta está desactivada. Contacta al administrador.');
+    }
 
     const { data: cred } = await this.supabase.db
       .from('credenciales_biometricas')
@@ -232,11 +235,14 @@ export class WebAuthnService {
     // Obtener usuario y credencial
     const { data: user } = await this.supabase.db
       .from('usuarios')
-      .select('id, email, role, name')
+      .select('id, email, role, name, activo, deleted_at')
       .eq('email', dto.email.toLowerCase())
       .maybeSingle();
 
     if (!user) throw new NotFoundException('Usuario no encontrado.');
+    if (user.deleted_at || !user.activo) {
+      throw new BadRequestException('Esta cuenta está desactivada. Contacta al administrador.');
+    }
 
     const { data: cred } = await this.supabase.db
       .from('credenciales_biometricas')

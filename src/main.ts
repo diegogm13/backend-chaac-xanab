@@ -1,9 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Cabeceras de seguridad HTTP (HSTS, X-Content-Type-Options, etc.)
+  app.use(helmet());
+
+  // Necesario para que req.ip resuelva la IP real detrás de un proxy (Vercel, etc.)
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   // Prefijo global para todos los endpoints
   app.setGlobalPrefix('api');

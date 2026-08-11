@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Put, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -7,6 +8,7 @@ import { DireccionDto } from './dto/direccion.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { getClientIp } from '../common/get-client-ip';
 
 @Controller('auth')
 export class AuthController {
@@ -33,8 +35,14 @@ export class AuthController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    return this.authService.login(dto, this.metaFrom(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  logout(@CurrentUser() user: JwtPayload, @Req() req: Request) {
+    return this.authService.logout(user.sub, user.email, this.metaFrom(req));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -51,8 +59,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Put('me/password')
-  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto) {
-    return this.authService.changePassword(user.sub, dto);
+  changePassword(@CurrentUser() user: JwtPayload, @Body() dto: ChangePasswordDto, @Req() req: Request) {
+    return this.authService.changePassword(user.sub, dto, this.metaFrom(req));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -65,5 +73,9 @@ export class AuthController {
   @Put('me/direccion')
   upsertDireccion(@CurrentUser() user: JwtPayload, @Body() dto: DireccionDto) {
     return this.authService.upsertDireccion(user.sub, dto);
+  }
+
+  private metaFrom(req: Request) {
+    return { ip: getClientIp(req), userAgent: req.headers['user-agent'] };
   }
 }

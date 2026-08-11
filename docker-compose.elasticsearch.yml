@@ -1,0 +1,24 @@
+# Elasticsearch local para desarrollo — un solo nodo, sin seguridad (solo para tu máquina).
+# Levantar:  docker compose -f docker-compose.elasticsearch.yml up -d
+# Apagar:    docker compose -f docker-compose.elasticsearch.yml down
+# Borrar todo el índice y empezar de cero: agrega -v al comando de abajo.
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: chaac-xanab-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - '9200:9200'
+    volumes:
+      - chaac_xanab_es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:9200/_cluster/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  chaac_xanab_es_data:

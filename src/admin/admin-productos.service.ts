@@ -1,18 +1,30 @@
 import {
-  Injectable, NotFoundException, BadRequestException,
+  Injectable, Logger, NotFoundException, BadRequestException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CacheService } from '../cache/cache.service';
 import { CreateProductoDto, UpdateProductoDto, AjusteStockDto } from './dto/create-producto.dto';
+import { ElasticsearchService } from '../elasticsearch/elasticsearch.service';
+import { mapearProductoADocumento, ProductoSupabaseRow } from '../elasticsearch/producto-documento.model';
 
 @Injectable()
 export class AdminProductosService {
+  private readonly logger = new Logger(AdminProductosService.name);
+
   constructor(
-    private readonly supabase:   SupabaseService,
-    private readonly cloudinary: CloudinaryService,
-    private readonly cache:      CacheService,
+    private readonly supabase:       SupabaseService,
+    private readonly cloudinary:     CloudinaryService,
+    private readonly cache:          CacheService,
+    private readonly elasticsearch:  ElasticsearchService,
   ) {}
+
+  /** Mantiene el índice de Elasticsearch al día. Nunca lanza: un fallo aquí no debe tumbar el CRUD del admin. */
+  private sincronizarIndice(row: unknown): void {
+    this.elasticsearch
+      .indexarProducto(mapearProductoADocumento(row as ProductoSupabaseRow))
+      .catch((err) => this.logger.warn(`No se pudo sincronizar con Elasticsearch: ${(err as Error).message}`));
+  }
 
   async findAll(): Promise<unknown> {
     const { data, error } = await this.supabase.db
@@ -42,6 +54,7 @@ export class AdminProductosService {
 
     if (error) throw new BadRequestException(error.message);
     this.cache.delByPrefix('productos:');
+    this.sincronizarIndice(data);
     return data;
   }
 
@@ -76,6 +89,7 @@ export class AdminProductosService {
 
     if (error) throw new BadRequestException(error.message);
     this.cache.delByPrefix('productos:');
+    this.sincronizarIndice(data);
     return data;
   }
 
@@ -96,6 +110,8 @@ export class AdminProductosService {
 
     if (error) throw new BadRequestException(error.message);
     this.cache.delByPrefix('productos:');
+    this.elasticsearch.eliminarProducto(id)
+      .catch((err) => this.logger.warn(`No se pudo quitar el producto del índice: ${(err as Error).message}`));
     return { message: 'Producto eliminado correctamente' };
   }
 
@@ -125,6 +141,22 @@ export class AdminProductosService {
 
     if (error) throw new BadRequestException(error.message);
     this.cache.delByPrefix('productos:');
+
+    // El .select() de arriba solo trae {id, name, stock} para no cambiar el contrato de
+    // esta respuesta; para sincronizar el índice se vuelve a leer la fila completa aparte.
+    (async () => {
+      try {
+        const { data: fila } = await this.supabase.db
+          .from('productos')
+          .select('*, categorias(id, slug, name)')
+          .eq('id', id)
+          .maybeSingle();
+        if (fila) this.sincronizarIndice(fila);
+      } catch (err) {
+        this.logger.warn(`No se pudo releer el producto para sincronizar: ${(err as Error).message}`);
+      }
+    })();
+
     return data;
   }
 }

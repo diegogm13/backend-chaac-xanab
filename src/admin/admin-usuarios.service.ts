@@ -1,23 +1,37 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { SupabaseService } from '../supabase/supabase.service';
+import { RolesService } from '../roles/roles.service';
+import { BitacoraService } from '../bitacora/bitacora.service';
 import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto } from './dto/admin-usuario.dto';
+
+export interface ActorInfo {
+  id: string;
+  email: string;
+  ip?: string;
+  userAgent?: string;
+}
 
 @Injectable()
 export class AdminUsuariosService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly roles: RolesService,
+    private readonly bitacora: BitacoraService,
+  ) {}
 
   async findAll() {
     const { data, error } = await this.supabase.db
       .from('usuarios')
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, activo, deleted_at, created_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw new BadRequestException(error.message);
     return data ?? [];
   }
 
-  async createUser(dto: CreateAdminUserDto) {
+  async createUser(dto: CreateAdminUserDto, actor: ActorInfo) {
     const { data: existing } = await this.supabase.db
       .from('usuarios')
       .select('id')
@@ -25,6 +39,11 @@ export class AdminUsuariosService {
       .maybeSingle();
 
     if (existing) throw new ConflictException('El correo ya está registrado');
+
+    const role = dto.role ?? 'customer';
+    if (!(await this.roles.roleExists(role))) {
+      throw new BadRequestException(`El rol "${role}" no existe`);
+    }
 
     const password_hash = await bcrypt.hash(dto.password, 10);
 
@@ -34,21 +53,32 @@ export class AdminUsuariosService {
         name: dto.name,
         email: dto.email.toLowerCase(),
         password_hash,
-        role: dto.role ?? 'customer',
+        role,
         email_verified: true,
       })
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, activo, created_at')
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    await this.bitacora.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'ALTA_USUARIO',
+      detalle: `Usuario creado: ${data.email} (rol: ${data.role})`,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
     return data;
   }
 
-  async updateUser(userId: string, dto: UpdateAdminUserDto) {
+  async updateUser(userId: string, dto: UpdateAdminUserDto, actor: ActorInfo) {
     const { data: existing } = await this.supabase.db
       .from('usuarios')
-      .select('id')
+      .select('id, email, role')
       .eq('id', userId)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (!existing) throw new NotFoundException('Usuario no encontrado');
@@ -63,6 +93,10 @@ export class AdminUsuariosService {
       if (emailTaken) throw new ConflictException('El correo ya está en uso');
     }
 
+    if (dto.role && !(await this.roles.roleExists(dto.role))) {
+      throw new BadRequestException(`El rol "${dto.role}" no existe`);
+    }
+
     const updates: Record<string, string> = {};
     if (dto.name)  updates['name']  = dto.name;
     if (dto.email) updates['email'] = dto.email.toLowerCase();
@@ -72,21 +106,38 @@ export class AdminUsuariosService {
       .from('usuarios')
       .update(updates)
       .eq('id', userId)
-      .select('id, name, email, role, created_at')
+      .select('id, name, email, role, activo, created_at')
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    if (dto.role && dto.role !== existing.role) {
+      await this.bitacora.registrar({
+        usuarioId: actor.id,
+        usuarioEmail: actor.email,
+        accion: 'CAMBIO_ROL',
+        detalle: `Rol de ${existing.email} cambiado de "${existing.role}" a "${dto.role}"`,
+        ip: actor.ip,
+        userAgent: actor.userAgent,
+      });
+    }
+
     return data;
   }
 
-  async updateRole(userId: string, dto: UpdateRoleDto) {
+  async updateRole(userId: string, dto: UpdateRoleDto, actor: ActorInfo) {
     const { data: existing } = await this.supabase.db
       .from('usuarios')
-      .select('id')
+      .select('id, email, role')
       .eq('id', userId)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (!existing) throw new NotFoundException('Usuario no encontrado');
+
+    if (!(await this.roles.roleExists(dto.role))) {
+      throw new BadRequestException(`El rol "${dto.role}" no existe`);
+    }
 
     const { data, error } = await this.supabase.db
       .from('usuarios')
@@ -96,24 +147,79 @@ export class AdminUsuariosService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    if (dto.role !== existing.role) {
+      await this.bitacora.registrar({
+        usuarioId: actor.id,
+        usuarioEmail: actor.email,
+        accion: 'CAMBIO_ROL',
+        detalle: `Rol de ${existing.email} cambiado de "${existing.role}" a "${dto.role}"`,
+        ip: actor.ip,
+        userAgent: actor.userAgent,
+      });
+    }
+
     return data;
   }
 
-  async deleteUser(userId: string) {
+  async setEstado(userId: string, activo: boolean, actor: ActorInfo) {
     const { data: existing } = await this.supabase.db
       .from('usuarios')
-      .select('id')
+      .select('id, email')
       .eq('id', userId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!existing) throw new NotFoundException('Usuario no encontrado');
+
+    const { data, error } = await this.supabase.db
+      .from('usuarios')
+      .update({ activo })
+      .eq('id', userId)
+      .select('id, name, email, role, activo')
+      .single();
+
+    if (error) throw new BadRequestException(error.message);
+
+    await this.bitacora.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: activo ? 'ACTIVAR_USUARIO' : 'DESACTIVAR_USUARIO',
+      detalle: `Usuario ${activo ? 'activado' : 'desactivado'}: ${existing.email}`,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return data;
+  }
+
+  /** Eliminación lógica: marca deleted_at y desactiva la cuenta, nunca borra el registro. */
+  async deleteUser(userId: string, actor: ActorInfo) {
+    const { data: existing } = await this.supabase.db
+      .from('usuarios')
+      .select('id, email')
+      .eq('id', userId)
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (!existing) throw new NotFoundException('Usuario no encontrado');
 
     const { error } = await this.supabase.db
       .from('usuarios')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), activo: false })
       .eq('id', userId);
 
     if (error) throw new BadRequestException(error.message);
+
+    await this.bitacora.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'BAJA_USUARIO',
+      detalle: `Usuario eliminado (lógico): ${existing.email}`,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
     return { message: 'Usuario eliminado correctamente' };
   }
 }

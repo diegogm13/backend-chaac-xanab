@@ -51,6 +51,38 @@ export class ProductosService {
     return result;
   }
 
+  /** Búsqueda server-side por nombre/descripción, usada por el buscador combinado. */
+  async buscarPorTermino(query: string) {
+    const termino = this.sanitizarTermino(query);
+    if (!termino) return [];
+
+    const cacheKey = `productos:buscar:${termino.toLowerCase()}`;
+    const cached = this.cache.get<unknown[]>(cacheKey);
+    if (cached) return cached;
+
+    const { data, error } = await this.supabase.db
+      .from('productos')
+      .select(SELECT)
+      .eq('activo', true)
+      .or(`name.ilike.%${termino}%,description.ilike.%${termino}%`)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const result = data ?? [];
+    this.cache.set(cacheKey, result, TTL);
+    return result;
+  }
+
+  /** Quita caracteres que rompen la sintaxis del filtro .or()/ILIKE de PostgREST. */
+  private sanitizarTermino(q: string): string {
+    return q
+      .replace(/[,()]/g, ' ')
+      .replace(/[%_\\]/g, ' ')
+      .trim()
+      .slice(0, 100);
+  }
+
   async findOne(id: string) {
     const key = `producto:${id}`;
     const cached = this.cache.get<unknown>(key);

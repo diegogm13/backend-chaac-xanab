@@ -10,12 +10,21 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { AdminModule } from './admin/admin.module';
 import { ComprasModule } from './compras/compras.module';
 import { WebAuthnModule } from './webauthn/webauthn.module';
+import { BitacoraModule } from './bitacora/bitacora.module';
+import { RolesModule } from './roles/roles.module';
+import { Channel3Module } from './channel3/channel3.module';
+import { BusquedaModule } from './busqueda/busqueda.module';
+import { ContactoModule } from './contacto/contacto.module';
+import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
+import { ReindexadoModule } from './elasticsearch/reindexado.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     SupabaseModule,
     CloudinaryModule,
+    BitacoraModule,
+    RolesModule,
     AuthModule,
     CategoriasModule,
     ProductosModule,
@@ -23,6 +32,11 @@ import { WebAuthnModule } from './webauthn/webauthn.module';
     AdminModule,
     ComprasModule,
     WebAuthnModule,
+    Channel3Module,
+    BusquedaModule,
+    ContactoModule,
+    ElasticsearchModule,
+    ReindexadoModule,
   ],
   providers: [CacheService],
   exports:   [CacheService],
