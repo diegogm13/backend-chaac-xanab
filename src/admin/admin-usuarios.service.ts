@@ -3,7 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import { SupabaseService } from '../supabase/supabase.service';
 import { RolesService } from '../roles/roles.service';
 import { BitacoraService } from '../bitacora/bitacora.service';
-import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto } from './dto/admin-usuario.dto';
+import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto, AdminChangePasswordDto } from './dto/admin-usuario.dto';
 
 export interface ActorInfo {
   id: string;
@@ -193,20 +193,54 @@ export class AdminUsuariosService {
     return data;
   }
 
-  /** Eliminación lógica: marca deleted_at y desactiva la cuenta, nunca borra el registro. */
-  async deleteUser(userId: string, actor: ActorInfo) {
+  /** Cambia la contraseña de un usuario desde el panel de administración (sin pedir la actual). */
+  async changePassword(userId: string, dto: AdminChangePasswordDto, actor: ActorInfo) {
     const { data: existing } = await this.supabase.db
       .from('usuarios')
       .select('id, email')
       .eq('id', userId)
-      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!existing) throw new NotFoundException('Usuario no encontrado');
+
+    const password_hash = await bcrypt.hash(dto.newPassword, 10);
+
+    const { error } = await this.supabase.db
+      .from('usuarios')
+      .update({ password_hash })
+      .eq('id', userId);
+
+    if (error) throw new BadRequestException(error.message);
+
+    await this.bitacora.registrar({
+      usuarioId: actor.id,
+      usuarioEmail: actor.email,
+      accion: 'CAMBIO_PASSWORD',
+      detalle: `Contraseña cambiada por un administrador para: ${existing.email}`,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return { message: 'Contraseña actualizada correctamente' };
+  }
+
+  /** Eliminación PERMANENTE: borra el registro de la base de datos, no solo lo desactiva. */
+  async deleteUser(userId: string, actor: ActorInfo) {
+    if (userId === actor.id) {
+      throw new BadRequestException('No puedes eliminar tu propia cuenta');
+    }
+
+    const { data: existing } = await this.supabase.db
+      .from('usuarios')
+      .select('id, email')
+      .eq('id', userId)
       .maybeSingle();
 
     if (!existing) throw new NotFoundException('Usuario no encontrado');
 
     const { error } = await this.supabase.db
       .from('usuarios')
-      .update({ deleted_at: new Date().toISOString(), activo: false })
+      .delete()
       .eq('id', userId);
 
     if (error) throw new BadRequestException(error.message);
@@ -215,11 +249,11 @@ export class AdminUsuariosService {
       usuarioId: actor.id,
       usuarioEmail: actor.email,
       accion: 'BAJA_USUARIO',
-      detalle: `Usuario eliminado (lógico): ${existing.email}`,
+      detalle: `Usuario eliminado permanentemente: ${existing.email}`,
       ip: actor.ip,
       userAgent: actor.userAgent,
     });
 
-    return { message: 'Usuario eliminado correctamente' };
+    return { message: 'Usuario eliminado permanentemente' };
   }
 }

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Put, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminUsuariosService } from './admin-usuarios.service';
-import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto, UpdateEstadoDto } from './dto/admin-usuario.dto';
+import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto, UpdateEstadoDto, AdminChangePasswordDto } from './dto/admin-usuario.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -53,6 +53,16 @@ export class AdminUsuariosController {
     @Req() req: Request,
   ) {
     return this.adminUsuariosService.setEstado(id, dto.activo, this.actorFrom(admin, req));
+  }
+
+  @Patch(':id/password')
+  changePassword(
+    @Param('id') id: string,
+    @Body() dto: AdminChangePasswordDto,
+    @CurrentUser() admin: JwtPayload,
+    @Req() req: Request,
+  ) {
+    return this.adminUsuariosService.changePassword(id, dto, this.actorFrom(admin, req));
   }
 
   @Delete(':id')

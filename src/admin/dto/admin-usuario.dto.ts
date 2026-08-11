@@ -2,6 +2,11 @@ import {
   IsEmail, IsNotEmpty, IsString, IsOptional, IsBoolean, IsStrongPassword,
 } from 'class-validator';
 
+export class AdminChangePasswordDto {
+  @IsStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
+  newPassword: string;
+}
+
 export class UpdateRoleDto {
   @IsString()
   @IsNotEmpty()
