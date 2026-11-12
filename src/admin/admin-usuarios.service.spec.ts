@@ -100,21 +100,23 @@ describe('AdminUsuariosService', () => {
     });
   });
 
-  describe('deleteUser (eliminación lógica)', () => {
-    it('marca deleted_at en lugar de borrar el registro y registra BAJA_USUARIO', async () => {
+  // Desde migration-borrado-usuario.sql el borrado es FÍSICO (DELETE + ON DELETE
+  // CASCADE en compras). La versión anterior de esta prueba esperaba borrado
+  // lógico y quedó desactualizada (Práctica 11, hallazgo DEF-07).
+  describe('deleteUser (eliminación permanente)', () => {
+    it('ejecuta DELETE y registra BAJA_USUARIO', async () => {
       const existsChain = buildChain({ id: 'u1', email: 'user@test.com' });
-      const updateChain = buildChain(null);
+      const deleteChain = buildChain(null);
+      deleteChain['eq'] = jest.fn().mockResolvedValue({ error: null });
       mockFrom
         .mockReturnValueOnce(existsChain) // check exists
-        .mockReturnValueOnce(updateChain); // update deleted_at
+        .mockReturnValueOnce(deleteChain); // delete
 
       const result = await service.deleteUser('u1', actor);
 
-      expect(updateChain['delete']).not.toHaveBeenCalled();
-      expect(updateChain['update']).toHaveBeenCalledWith(
-        expect.objectContaining({ activo: false, deleted_at: expect.any(String) }),
-      );
-      expect(result.message).toBeDefined();
+      expect(deleteChain['delete']).toHaveBeenCalled();
+      expect(deleteChain['eq']).toHaveBeenCalledWith('id', 'u1');
+      expect(result.message).toBe('Usuario eliminado permanentemente');
       expect(bitacora.registrar).toHaveBeenCalledWith(
         expect.objectContaining({ accion: 'BAJA_USUARIO' }),
       );

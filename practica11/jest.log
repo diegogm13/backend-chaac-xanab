@@ -1,0 +1,302 @@
+﻿node.exe : PASS src/productos/productos.service.spec.ts (17.285 s)
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/produc...c.ts (17.285 s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  ProductosService
+    findOne
+      √ lanza NotFoundException si el producto no existe (178 ms)
+      √ retorna el producto si existe (23 ms)
+    findAll sin filtros
+      √ retorna lista vacía si no hay productos (20 ms)
+
+PASS src/admin/admin-usuarios.service.spec.ts (17.922 s)
+  AdminUsuariosService
+    createUser
+      √ crea el usuario cuando el rol existe y registra ALTA_USUARIO (479 ms)
+      √ lanza ConflictException si el correo ya existe (111 ms)
+      √ lanza BadRequestException si el rol no existe (7 ms)
+    setEstado
+      √ desactiva un usuario y registra DESACTIVAR_USUARIO (6 ms)
+      √ lanza NotFoundException si el usuario no existe o está eliminado (11 ms)
+    deleteUser (eliminación permanente)
+      √ ejecuta DELETE y registra BAJA_USUARIO (11 ms)
+    updateRole
+      √ registra CAMBIO_ROL cuando el rol cambia (5 ms)
+      √ lanza BadRequestException si el rol no existe (7 ms)
+
+PASS src/auth/auth.service.spec.ts (18.05 s)
+  AuthService
+    register
+      √ crea el usuario y devuelve un mensaje cuando el email es nuevo (409 ms)
+      √ lanza ConflictException si el email ya existe (78 ms)
+    login
+      √ devuelve token con credenciales correctas y registra LOGIN en bitácora (67 ms)
+      √ lanza UnauthorizedException si el usuario no existe (14 ms)
+      √ rechaza el login de una cuenta desactivada (28 ms)
+      √ rechaza el login de una cuenta eliminada (soft delete) (11 ms)
+      √ rechaza el login mientras la cuenta esté bloqueada (locked_until futuro) (22 ms)
+      √ incrementa failed_login_attempts con contraseña incorrecta (sin llegar al límite) (14 ms)
+      √ bloquea la cuenta al llegar al máximo de intentos fallidos (14 ms)
+    changePassword
+      √ actualiza la contraseña y registra CAMBIO_PASSWORD (198 ms)
+      √ lanza UnauthorizedException si la contraseña actual es incorrecta (11 ms)
+    logout
+      √ registra LOGOUT en la bitácora (5 ms)
+
+PASS src/supabase/supabase.service.spec.ts (18.259 s)
+  SupabaseService
+    √ should initialize the Supabase client (92 ms)
+    √ should expose the db client with expected methods (9 ms)
+
+PASS src/compras/compras.service.spec.ts (18.302 s)
+  ComprasService
+    create
+      √ crea la compra y descuenta el stock correctamente (60 ms)
+      √ lanza BadRequestException si stock insuficiente (48 ms)
+      √ lanza BadRequestException si el producto no existe (9 ms)
+    findOne
+      √ retorna la compra si el usuario es el dueño (24 ms)
+      √ lanza ForbiddenException si el usuario no es el dueño (45 ms)
+      √ lanza NotFoundException si la compra no existe (7 ms)
+
+PASS src/webauthn/webauthn.service.spec.ts (18.813 s)
+  WebAuthnService
+    generateRegistrationChallenge
+      √ retorna opciones de registro si el usuario existe y no tiene credencial (171 ms)
+      √ lanza NotFoundException si el usuario no existe (86 ms)
+      √ lanza ConflictException si ya tiene credencial registrada (6 ms)
+    generateLoginChallenge
+      √ lanza NotFoundException si el usuario no tiene credencial (12 ms)
+      √ lanza NotFoundException si el usuario no existe (6 ms)
+    consumeChallenge (via verifyLogin)
+      √ lanza BadRequestException si no hay challenge activo (9 ms)
+
+PASS src/admin/admin-productos.service.spec.ts (18.673 s)
+  AdminProductosService
+    ajustarStock
+      √ incrementa el stock correctamente (98 ms)
+      √ lanza BadRequestException si el stock resultante es negativo (77 ms)
+      √ lanza NotFoundException si el producto no existe (13 ms)
+    remove
+      √ hace soft delete correctamente (6 ms)
+      √ lanza NotFoundException si el producto no existe (5 ms)
+    create con imagen
+      √ sube imagen a Cloudinary y guarda la URL en el producto (16 ms)
+
+PASS src/roles/roles.service.spec.ts
+  RolesService
+    create
+      √ crea un rol nuevo (10 ms)
+      √ lanza ConflictException si el rol ya existe (22 ms)
+    findPermisosByRole
+      √ lanza NotFoundException si el rol no existe (4 ms)
+      √ devuelve los permisos asociados al rol (3 ms)
+    updateRolePermisos
+      √ reemplaza los permisos del rol (delete + insert) (7 ms)
+    roleExists
+      √ devuelve true si el rol existe (4 ms)
+      √ devuelve false si el rol no existe (3 ms)
+
+  console.error
+    [Bitacora] Error al registrar acción: db error
+
+      27 |         user_agent:    params.userAgent ?? null,
+      28 |       });
+    > 29 |       if (error) console.error('[Bitacora] Error al registrar acción:', error.message);
+         |                          ^
+      30 |     } catch (err) {
+      31 |       console.error('[Bitacora] Error inesperado al registrar acción:', err);
+      32 |     }
+
+      at BitacoraService.error [as registrar] (bitacora/bitacora.service.ts:29:26)
+      at Object.<anonymous> (bitacora/bitacora.service.spec.ts:37:7)
+
+PASS src/bitacora/bitacora.service.spec.ts
+  BitacoraService
+    registrar
+      √ inserta un registro en la bitácora (10 ms)
+      √ no lanza si la inserción falla (no debe romper el flujo principal) (102 ms)
+    findAll
+      √ devuelve resultados paginados aplicando filtros (4 ms)
+
+PASS src/practica11/http.e2e.spec.ts (16.064 s)
+  Práctica 11 — Endpoints HTTP (White Box)
+    WEB-01 respuestas exitosas
+      √ 200 GET /api/productos: sólo activos, estructura JSON consistente (68 ms)
+      √ 200 GET /api/productos/:id existente (7 ms)
+      √ 201 POST /api/auth/register: crea usuario, no devuelve la contraseña ni el hash (477 ms)
+      √ 201 POST /api/auth/login devuelve sólo { token } y el JWT trae rol (22 ms)
+      √ 200 GET /api/auth/me no expone password_hash (35 ms)
+      √ 201 POST /api/compras: el servidor calcula el total y descuenta stock (31 ms)
+    WEB-02 / WEB-03 errores y validación del backend
+      √ 400 register: email inválido -> message[] y nada insertado (10 ms)
+      √ 400 register: contraseña débil -> message[] y nada insertado (10 ms)
+      √ 400 register: nombre vacío -> message[] y nada insertado (9 ms)
+      √ 400 register: campo no permitido (forbidNonWhitelisted) -> message[] y nada insertado (14 ms)
+      √ 400 JSON mal formado (16 ms)
+      √ 409 register con correo existente (sin importar mayúsculas) (8 ms)
+      √ 400 POST /api/compras: items vacío (9 ms)
+      √ 400 POST /api/compras: quantity 0 (límite) (12 ms)
+      √ 400 POST /api/compras: producto_id no UUID (6 ms)
+      √ 400 POST /api/compras: size vacío (11 ms)
+      √ quantity 1 (límite válido) -> 201 (6 ms)
+      √ HALLAZGO: stock insuficiente responde 400 (semánticamente sería 409/422) (10 ms)
+      √ 404 GET /api/productos/:id inexistente y producto inactivo (8 ms)
+      √ 404 GET /api/compras/:id inexistente (9 ms)
+      √ DEFECTO DEF-05: GET /api/productos/abc (id no UUID) -> 500 en vez de 400/404 (35 ms)
+    WEB-04 autenticación (401) vs autorización (403)
+      √ 401 sin token (7 ms)
+      √ 401 token con firma inválida (8 ms)
+      √ 401 token expirado (10 ms)
+      √ 401 login: contraseña errónea y correo inexistente dan el MISMO mensaje (17 ms)
+      √ 401 EMAIL_NOT_VERIFIED (9 ms)
+      √ 401 ACCOUNT_LOCKED al 5.º intento fallido y bloquea aun con la contraseña correcta (92 ms)
+      √ 403 cliente autenticado intentando ver la compra de otro usuario (14 ms)
+      √ 401 vs 403 vs 200 en /api/admin/productos (10 ms)
+      √ HALLAZGO: DELETE /api/admin/productos/:id responde 200 con cuerpo (no 204) y es borrado lógico (10 ms)
+    500 y errores de infraestructura
+      √ 500 GET /api/productos con Supabase caído, sin filtrar el detalle (6 ms)
+      √ DEFECTO DEF-06: con Supabase caído, /api/compras/mis-compras responde 400 y filtra el error interno (5 ms)
+    Caminos de ComprasService.create() y ProductosService
+      √ dirección inline: 1.ª compra INSERTA, 2.ª ACTUALIZA la misma dirección principal (16 ms)
+      √ direccion_id explícito se usa tal cual; sin dirección -> null (12 ms)
+      √ producto inactivo en la compra -> 400 "no encontrado o inactivo" (5 ms)
+      √ falla de Supabase en SELECT productos -> 400 con mensaje interno (ver DEF-06) (6 ms)
+      √ falla de Supabase en INSERT compras -> 400 con mensaje interno (ver DEF-06) (4 ms)
+      √ findOne con error de Supabase -> 400 (7 ms)
+      √ GET /api/productos usa caché: la 2.ª petición no consulta Supabase (7 ms)
+      √ 401 JWT bien firmado pero sin "sub" (JwtStrategy.validate) (6 ms)
+      √ RolesGuard sin @Roles() deja pasar (camino requiredRoles = undefined) (1 ms)
+      √ buscarPorTermino(): sanitiza caracteres que alteran el filtro .or() de PostgREST (6 ms)
+      √ filtros: ?badge válido -> 200; ?badge inválido -> 400; ?categoria_slug -> 200 (11 ms)
+    DB-06 / transacciones en POST /api/compras
+      √ DEFECTO DEF-03: dos compras simultáneas del último par -> ambas 201 (sobreventa) (103 ms)
+      √ DEFECTO DEF-01: el mismo POST repetido (reintento) crea 2 compras (8 ms)
+      √ DEFECTO DEF-08: si falla el INSERT de compras_items queda una compra huérfana (sin transacción) (9 ms)
+      √ si falla el UPDATE de stock la compra se confirma igual (error ignorado) (4 ms)
+
+---------------------------------|---------|----------|---------|---------|-----------------------------------
+File                             | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                 
+---------------------------------|---------|----------|---------|---------|-----------------------------------
+All files                        |   40.73 |    36.81 |   43.38 |   41.54 |                                   
+ src                             |       0 |        0 |       0 |       0 |                                   
+  app.module.ts                  |       0 |      100 |     100 |       0 | 1-44                              
+  main.ts                        |       0 |        0 |       0 |       0 | 1-38                              
+ src/admin                       |    35.4 |    17.64 |   30.61 |    38.8 |                                   
+  admin-categorias.controller.ts |       0 |        0 |       0 |       0 | 1-49                              
+  admin-categorias.service.ts    |       0 |        0 |       0 |       0 | 1-84                              
+  admin-compras.controller.ts    |       0 |      100 |       0 |       0 | 1-22                              
+  admin-compras.service.ts       |       0 |        0 |       0 |       0 | 1-44                              
+  admin-productos.controller.ts  |   84.61 |        0 |   42.85 |   83.33 | 16,38,49,59                       
+  admin-productos.service.ts     |   68.11 |    30.76 |      70 |   74.13 | 26,62-93,114,154                  
+  admin-usuarios.controller.ts   |       0 |      100 |       0 |       0 | 1-74                              
+  admin-usuarios.service.ts      |   51.72 |    22.22 |    62.5 |   60.29 | 24-31,77-125,198-224,230          
+  admin.module.ts                |       0 |      100 |     100 |       0 | 1-32                              
+ src/admin/dto                   |   30.76 |        0 |       0 |   32.43 |                                   
+  admin-compra.dto.ts            |       0 |      100 |     100 |       0 | 1-17                              
+  admin-usuario.dto.ts           |       0 |      100 |     100 |       0 | 1-49                              
+  create-categoria.dto.ts        |       0 |      100 |       0 |       0 | 1-35                              
+  create-producto.dto.ts         |   58.53 |        0 |       0 |   64.86 | 8-17,30,35,39,69,74,79,100        
+ src/auth                        |   58.68 |     41.3 |   44.44 |   61.33 |                                   
+  auth.controller.ts             |   77.77 |      100 |   38.46 |   76.47 | 24,29,34,45,57,63,69,75           
+  auth.module.ts                 |       0 |      100 |       0 |       0 | 1-27                              
+  auth.service.ts                |   59.32 |     41.3 |   53.84 |   62.85 | 70,78-133,192,233-256,289-333     
+ src/auth/decorators             |     100 |      100 |     100 |     100 |                                   
+  current-user.decorator.ts      |     100 |      100 |     100 |     100 |                                   
+  roles.decorator.ts             |     100 |      100 |     100 |     100 |                                   
+ src/auth/dto                    |     100 |      100 |     100 |     100 |                                   
+  direccion.dto.ts               |     100 |      100 |     100 |     100 |                                   
+  login.dto.ts                   |     100 |      100 |     100 |     100 |                                   
+  register.dto.ts                |     100 |      100 |     100 |     100 |                                   
+  update-profile.dto.ts          |     100 |      100 |     100 |     100 |                                   
+ src/auth/guards                 |     100 |      100 |     100 |     100 |                                   
+  jwt-auth.guard.ts              |     100 |      100 |     100 |     100 |                                   
+  roles.guard.ts                 |     100 |      100 |     100 |     100 |                                   
+ src/auth/strategies             |     100 |      100 |     100 |     100 |                                   
+  jwt.strategy.ts                |     100 |      100 |     100 |     100 |                                   
+ src/bitacora                    |   47.72 |    66.66 |      60 |   53.12 |                                   
+  bitacora.controller.ts         |       0 |      100 |       0 |       0 | 1-16                              
+  bitacora.module.ts             |       0 |      100 |     100 |       0 | 1-10                              
+  bitacora.service.ts            |   80.76 |    66.66 |     100 |   94.44 | 31                                
+ src/bitacora/dto                |       0 |      100 |       0 |       0 |                                   
+  bitacora-query.dto.ts          |       0 |      100 |       0 |       0 | 1-39                              
+ src/busqueda                    |       0 |        0 |       0 |       0 |                                   
+  busqueda.controller.ts         |       0 |      100 |       0 |       0 | 1-11                              
+  busqueda.module.ts             |       0 |      100 |     100 |       0 | 1-13                              
+  busqueda.service.ts            |       0 |        0 |       0 |       0 | 1-59                              
+ src/busqueda/dto                |       0 |      100 |     100 |       0 |                                   
+  buscar-query.dto.ts            |       0 |      100 |     100 |       0 | 1-7                               
+ src/cache                       |   82.35 |       50 |      80 |   76.92 |                                   
+  cache.service.ts               |   82.35 |       50 |      80 |   76.92 | 16-17,26                          
+ src/categorias                  |       0 |        0 |       0 |       0 |                                   
+  categorias.controller.ts       |       0 |      100 |       0 |       0 | 1-15                              
+  categorias.module.ts           |       0 |      100 |     100 |       0 | 1-11                              
+  categorias.service.ts          |       0 |        0 |       0 |       0 | 1-43                              
+ src/channel3                    |       0 |        0 |       0 |       0 |                                   
+  channel3.module.ts             |       0 |      100 |     100 |       0 | 1-9                               
+  channel3.service.ts            |       0 |        0 |       0 |       0 | 1-130                             
+ src/cloudinary                  |      20 |        0 |       0 |      16 |                                   
+  cloudinary.module.ts           |       0 |      100 |     100 |       0 | 1-9                               
+  cloudinary.service.ts          |      24 |        0 |       0 |   18.18 | 7-59                              
+ src/common                      |      80 |    33.33 |     100 |      80 |                                   
+  get-client-ip.ts               |      80 |    33.33 |     100 |      80 | 7                                 
+ src/compras                     |   91.25 |    85.18 |     100 |    92.3 |                                   
+  compras.controller.ts          |     100 |      100 |     100 |     100 |                                   
+  compras.module.ts              |       0 |      100 |     100 |       0 | 1-11                              
+  compras.service.ts             |     100 |    85.18 |     100 |     100 | 30-38,62,135                      
+ src/compras/dto                 |     100 |      100 |     100 |     100 |                                   
+  create-compra.dto.ts           |     100 |      100 |     100 |     100 |                                   
+ src/contacto                    |       0 |        0 |       0 |       0 |                                   
+  contacto.controller.ts         |       0 |      100 |       0 |       0 | 1-11                              
+  contacto.module.ts             |       0 |      100 |     100 |       0 | 1-11                              
+  contacto.service.ts            |       0 |        0 |       0 |       0 | 1-28                              
+ src/contacto/dto                |       0 |      100 |     100 |       0 |                                   
+  contacto.dto.ts                |       0 |      100 |     100 |       0 | 1-20                              
+ src/elasticsearch               |   13.87 |    27.53 |   17.39 |   14.66 |                                   
+  elasticsearch.module.ts        |       0 |      100 |     100 |       0 | 1-8                               
+  elasticsearch.service.ts       |    5.82 |        0 |       0 |    4.54 | 17-284                            
+  producto-documento.model.ts    |   94.73 |       76 |     100 |   94.73 | 82                                
+  reindexado.controller.ts       |       0 |      100 |       0 |       0 | 1-25                              
+  reindexado.module.ts           |       0 |      100 |     100 |       0 | 1-13                              
+  reindexado.service.ts          |       0 |        0 |       0 |       0 | 1-43                              
+ src/email                       |       0 |        0 |       0 |       0 |                                   
+  email.module.ts                |       0 |      100 |     100 |       0 | 1-8                               
+  email.service.ts               |       0 |        0 |       0 |       0 | 1-191                             
+ src/links-externos              |       0 |        0 |       0 |       0 |                                   
+  links-externos.controller.ts   |       0 |      100 |       0 |       0 | 1-10                              
+  links-externos.module.ts       |       0 |      100 |     100 |       0 | 1-9                               
+  links-externos.service.ts      |       0 |        0 |       0 |       0 | 1-15                              
+ src/practica11                  |   86.11 |    80.43 |   82.05 |   88.31 |                                   
+  fake-supabase.ts               |   86.11 |    80.43 |   82.05 |   88.31 | 70,72,79,85,121,130,136-138       
+ src/productos                   |   86.95 |    81.81 |   88.88 |   89.09 |                                   
+  productos.controller.ts        |     100 |      100 |     100 |     100 |                                   
+  productos.module.ts            |       0 |      100 |     100 |       0 | 1-11                              
+  productos.service.ts           |   96.07 |    81.81 |   83.33 |   97.56 | 47                                
+ src/productos/dto               |     100 |      100 |     100 |     100 |                                   
+  query-productos.dto.ts         |     100 |      100 |     100 |     100 |                                   
+ src/roles                       |   42.46 |    26.66 |   47.05 |   46.42 |                                   
+  roles.controller.ts            |       0 |      100 |       0 |       0 | 1-43                              
+  roles.module.ts                |       0 |      100 |     100 |       0 | 1-10                              
+  roles.service.ts               |   72.09 |    26.66 |      80 |   81.25 | 10-16,39-45                       
+ src/roles/dto                   |       0 |      100 |     100 |       0 |                                   
+  roles.dto.ts                   |       0 |      100 |     100 |       0 | 1-16                              
+ src/seed                        |       0 |        0 |       0 |       0 |                                   
+  seed.ts                        |       0 |        0 |       0 |       0 | 1-54                              
+ src/supabase                    |    64.7 |      100 |   66.66 |   69.23 |                                   
+  supabase.module.ts             |       0 |      100 |     100 |       0 | 1-9                               
+  supabase.service.ts            |   91.66 |      100 |   66.66 |      90 | 35                                
+ src/webauthn                    |   38.61 |    30.43 |   53.84 |    37.2 |                                   
+  webauthn.controller.ts         |       0 |      100 |       0 |       0 | 1-31                              
+  webauthn.module.ts             |       0 |      100 |     100 |       0 | 1-11                              
+  webauthn.service.ts            |   49.36 |    30.43 |    87.5 |   47.05 | 79-84,130-188,203,214-226,236-305 
+ src/webauthn/dto                |       0 |      100 |     100 |       0 |                                   
+  webauthn.dto.ts                |       0 |      100 |     100 |       0 | 1-44                              
+---------------------------------|---------|----------|---------|---------|-----------------------------------
+Test Suites: 10 passed, 10 total
+Tests:       100 passed, 100 total
+Snapshots:   0 total
+Time:        60.362 s
+Ran all test suites.

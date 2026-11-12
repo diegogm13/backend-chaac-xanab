@@ -3,6 +3,8 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { AdminProductosService } from './admin-productos.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { CacheService } from '../cache/cache.service';
+import { ElasticsearchService } from '../elasticsearch/elasticsearch.service';
 
 function buildChain(data: unknown, error: unknown = null) {
   const self: Record<string, jest.Mock> = {};
@@ -32,6 +34,14 @@ describe('AdminProductosService', () => {
           useValue: {
             uploadBuffer: jest.fn().mockResolvedValue('https://cloudinary.com/test.jpg'),
             deleteByUrl: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        CacheService,
+        {
+          provide: ElasticsearchService,
+          useValue: {
+            indexarProducto: jest.fn().mockResolvedValue(undefined),
+            eliminarProducto: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

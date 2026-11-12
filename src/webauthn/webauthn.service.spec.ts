@@ -93,7 +93,7 @@ describe('WebAuthnService', () => {
   describe('generateLoginChallenge', () => {
     it('lanza NotFoundException si el usuario no tiene credencial', async () => {
       mockFrom
-        .mockReturnValueOnce(buildChain({ id: 'user-1' })) // usuario existe
+        .mockReturnValueOnce(buildChain({ id: 'user-1', activo: true, deleted_at: null })) // usuario existe y activo
         .mockReturnValueOnce(buildChain(null));             // sin credencial
 
       await expect(

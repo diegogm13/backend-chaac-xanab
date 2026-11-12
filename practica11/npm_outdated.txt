@@ -1,0 +1,25 @@
+﻿Package                       Current       Wanted   Latest  Location                               Depended by
+@nestjs/cli                    10.4.9       10.4.9  12.0.12  node_modules/@nestjs/cli               backend-chaac-xanab
+@nestjs/common                10.4.22      10.4.22   12.4.2  node_modules/@nestjs/common            backend-chaac-xanab
+@nestjs/config                  3.3.0        3.3.0   12.1.1  node_modules/@nestjs/config            backend-chaac-xanab
+@nestjs/core                  10.4.22      10.4.22   12.4.2  node_modules/@nestjs/core              backend-chaac-xanab
+@nestjs/jwt                    10.2.0       10.2.0   12.0.4  node_modules/@nestjs/jwt               backend-chaac-xanab
+@nestjs/passport               10.0.3       10.0.3   12.0.1  node_modules/@nestjs/passport          backend-chaac-xanab
+@nestjs/platform-express      10.4.22      10.4.22   12.4.2  node_modules/@nestjs/platform-express  backend-chaac-xanab
+@nestjs/schematics             10.2.3       10.2.3  12.0.13  node_modules/@nestjs/schematics        backend-chaac-xanab
+@nestjs/testing               10.4.22      10.4.22   12.4.2  node_modules/@nestjs/testing           backend-chaac-xanab
+@simplewebauthn/server         10.0.1       10.0.1   14.1.0  node_modules/@simplewebauthn/server    backend-chaac-xanab
+@supabase/supabase-js         2.100.0      2.119.0  2.119.0  node_modules/@supabase/supabase-js     backend-chaac-xanab
+@types/express                4.17.25      4.17.25    5.0.6  node_modules/@types/express            backend-chaac-xanab
+@types/jest                   29.5.14      29.5.14   30.0.0  node_modules/@types/jest               backend-chaac-xanab
+@types/multer                  1.4.13       1.4.13    2.3.0  node_modules/@types/multer             backend-chaac-xanab
+@types/node                  20.19.37     20.19.43   26.6.6  node_modules/@types/node               backend-chaac-xanab
+@types/nodemailer              6.4.23       6.4.24    8.0.2  node_modules/@types/nodemailer         backend-chaac-xanab
+bcryptjs                        2.4.3        2.4.3    3.0.3  node_modules/bcryptjs                  backend-chaac-xanab
+class-validator                0.14.4       0.14.4   0.15.1  node_modules/class-validator           backend-chaac-xanab
+cloudinary                      2.9.0       2.11.0   2.11.0  node_modules/cloudinary                backend-chaac-xanab
+jest                           29.7.0       29.7.0   30.5.2  node_modules/jest                      backend-chaac-xanab
+multer                    1.4.5-lts.2  1.4.5-lts.2    2.5.0  node_modules/multer                    backend-chaac-xanab
+nodemailer                     6.10.1       6.10.1   10.5.0  node_modules/nodemailer                backend-chaac-xanab
+ts-jest                        29.4.6      29.4.15  29.4.15  node_modules/ts-jest                   backend-chaac-xanab
+typescript                      5.9.3        5.9.3    7.0.2  node_modules/typescript                backend-chaac-xanab

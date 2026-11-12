@@ -16,6 +16,7 @@ describe('SupabaseService', () => {
               const map: Record<string, string> = {
                 SUPABASE_URL: 'https://test.supabase.co',
                 SUPABASE_SERVICE_ROLE_KEY: 'test-key',
+                SUPABASE_ANON_KEY: 'test-anon-key',
               };
               if (!map[key]) throw new Error(`Missing env: ${key}`);
               return map[key];

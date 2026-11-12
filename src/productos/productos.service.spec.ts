@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ProductosService } from './productos.service';
 import { SupabaseService } from '../supabase/supabase.service';
+import { CacheService } from '../cache/cache.service';
 
 function buildChain(data: unknown, error: unknown = null) {
   const self: Record<string, jest.Mock> = {};
@@ -25,6 +26,7 @@ describe('ProductosService', () => {
       providers: [
         ProductosService,
         { provide: SupabaseService, useValue: { db: { from: mockFrom } } },
+        CacheService,
       ],
     }).compile();
     service = module.get<ProductosService>(ProductosService);
