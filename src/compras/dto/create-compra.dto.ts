@@ -1,5 +1,5 @@
 import {
-  IsArray, IsOptional, IsUUID, IsString,
+  IsArray, IsOptional, IsUUID, IsString, IsInt, Max, IsISO8601,
   IsNumber, IsNotEmpty, Min, ValidateNested, ArrayMinSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -57,4 +57,13 @@ export class CreateCompraDto {
   @ValidateNested()
   @Type(() => DireccionInlineDto)
   direccion?: DireccionInlineDto;
+}
+
+/** Paginación del historial (Práctica 12): GET /compras/mis-compras?limite=20&antes=<created_at> */
+export class MisComprasQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100)
+  limite?: number;
+
+  @IsOptional() @IsISO8601()
+  antes?: string;
 }

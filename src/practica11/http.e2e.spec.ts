@@ -229,11 +229,11 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
       expect(r.status).toBe(201);
     });
 
-    it('HALLAZGO: stock insuficiente responde 400 (semánticamente sería 409/422)', async () => {
+    it('CORREGIDO P12 (OBS-04): stock insuficiente responde 409 Conflict', async () => {
       const r = await http('POST', '/api/compras', {
         token: token(IDS.cliente, 'customer'), body: { items: [{ producto_id: IDS.ultimo, size: '27', quantity: 2 }] },
       });
-      expect(r.status).toBe(400);
+      expect(r.status).toBe(409);
       expect(r.json.message).toContain('Stock insuficiente');
       expect(fake.tabla('productos').find((p) => p.id === IDS.ultimo)!.stock).toBe(1);
     });
@@ -324,11 +324,11 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
       expect(r.texto).not.toContain('fetch failed');
     });
 
-    it('DEFECTO DEF-06: con Supabase caído, /api/compras/mis-compras responde 400 y filtra el error interno', async () => {
+    it('CORREGIDO P12 (DEF-06): con Supabase caído, /api/compras/mis-compras responde 500 genérico', async () => {
       fake.caida = true;
       const r = await http('GET', '/api/compras/mis-compras', { token: token(IDS.cliente, 'customer') });
-      expect(r.status).toBe(400); // debería ser 500/503: el cliente no hizo nada mal
-      expect(r.json.message).toBe('TypeError: fetch failed');
+      expect(r.status).toBe(500);
+      expect(r.texto).not.toContain('fetch failed'); // ya no filtra el error interno
     });
   });
 
@@ -356,26 +356,39 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
       expect([ca.direccion_id, cb.direccion_id]).toEqual([dirId, null]);
     });
 
-    it('producto inactivo en la compra -> 400 "no encontrado o inactivo"', async () => {
+    it('producto inactivo en la compra -> 404 "no encontrado o inactivo" y nada se guarda', async () => {
       const r = await http('POST', '/api/compras', { token: t(), body: { items: [{ ...item, producto_id: IDS.inactivo }] } });
-      expect(r.status).toBe(400);
+      expect(r.status).toBe(404);
       expect(r.json.message).toContain('no encontrado o inactivo');
+      expect(fake.tabla('compras').filter((c) => c.user_id === IDS.cliente)).toHaveLength(0);
     });
 
-    it.each([
-      ['SELECT productos', { tabla: 'productos', op: 'select' }],
-      ['INSERT compras', { tabla: 'compras', op: 'insert' }],
-    ])('falla de Supabase en %s -> 400 con mensaje interno (ver DEF-06)', async (_c, falla) => {
-      fake.fallar = falla;
+    it('CORREGIDO P12: Supabase caído durante la compra -> 500 genérico, sin datos parciales', async () => {
+      fake.caida = true;
       const r = await http('POST', '/api/compras', { token: t(), body: { items: [item] } });
-      expect(r.status).toBe(400);
-      expect(r.json.message).toContain('fallo inyectado');
+      fake.caida = false;
+      expect(r.status).toBe(500);
+      expect(r.texto).not.toContain('fetch failed');
+      expect(fake.tabla('compras').filter((c) => c.user_id === IDS.cliente)).toHaveLength(0);
     });
 
-    it('findOne con error de Supabase -> 400', async () => {
+    it('findOne con error de Supabase -> 500 genérico; id no UUID -> 400', async () => {
       fake.fallar = { tabla: 'compras', op: 'select' };
-      const r = await http('GET', `/api/compras/${IDS.noExiste}`, { token: t() });
-      expect(r.status).toBe(400);
+      expect((await http('GET', `/api/compras/${IDS.noExiste}`, { token: t() })).status).toBe(500);
+      fake.fallar = null;
+      expect((await http('GET', '/api/compras/abc', { token: t() })).status).toBe(400);
+    });
+
+    it('P12: historial paginado ?limite=1 y cursor ?antes=; parámetros inválidos -> 400', async () => {
+      for (const _ of [1, 2, 3]) await http('POST', '/api/compras', { token: t(), body: { items: [item] } });
+      const p1 = await http('GET', '/api/compras/mis-compras?limite=2', { token: t() });
+      expect(p1.json).toHaveLength(2);
+      const p2 = await http('GET', `/api/compras/mis-compras?limite=2&antes=${encodeURIComponent(p1.json[1].created_at)}`, { token: t() });
+      expect(p2.json.length).toBeLessThanOrEqual(2);
+      expect(p2.json.map((c: any) => c.id)).not.toContain(p1.json[0].id);
+      expect((await http('GET', '/api/compras/mis-compras', { token: t() })).json).toHaveLength(3); // sin límite: igual que antes
+      expect((await http('GET', '/api/compras/mis-compras?limite=0', { token: t() })).status).toBe(400);
+      expect((await http('GET', '/api/compras/mis-compras?antes=ayer', { token: t() })).status).toBe(400);
     });
 
     it('GET /api/productos usa caché: la 2.ª petición no consulta Supabase', async () => {
@@ -429,7 +442,7 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
 
   // ───────────────────────── Transacciones y concurrencia ───────────────────
   describe('DB-06 / transacciones en POST /api/compras', () => {
-    it('DEFECTO DEF-03: dos compras simultáneas del último par -> ambas 201 (sobreventa)', async () => {
+    it('CORREGIDO P12 (DEF-03): dos compras simultáneas del último par -> una 201 y una 409, sin sobreventa', async () => {
       fake.latenciaMs = 15; // viaje de red a Supabase
       const cuerpo = { items: [{ producto_id: IDS.ultimo, size: '27', quantity: 1 }] };
       const [a, b] = await Promise.all([
@@ -437,12 +450,12 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
         http('POST', '/api/compras', { token: token(IDS.otro, 'customer'), body: cuerpo }),
       ]);
       const vendidas = fake.tabla('compras_items').filter((i) => i.producto_id === IDS.ultimo).length;
-      expect([a.status, b.status]).toEqual([201, 201]);
-      expect(vendidas).toBe(2); // se vendieron 2 piezas…
-      expect(fake.tabla('productos').find((p) => p.id === IDS.ultimo)!.stock).toBe(0); // …de un stock de 1
+      expect([a.status, b.status].sort()).toEqual([201, 409]);
+      expect(vendidas).toBe(1);
+      expect(fake.tabla('productos').find((p) => p.id === IDS.ultimo)!.stock).toBe(0);
     });
 
-    it('DEFECTO DEF-01: el mismo POST repetido (reintento) crea 2 compras', async () => {
+    it('sin Idempotency-Key el mismo POST repetido crea 2 compras (comportamiento del cliente web)', async () => {
       const cuerpo = { items: [{ producto_id: IDS.tenis, size: '26', quantity: 1 }] };
       const t = token(IDS.cliente, 'customer');
       await http('POST', '/api/compras', { token: t, body: cuerpo });
@@ -450,25 +463,40 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
       expect(fake.tabla('compras').filter((c) => c.user_id === IDS.cliente)).toHaveLength(2);
     });
 
-    it('DEFECTO DEF-08: si falla el INSERT de compras_items queda una compra huérfana (sin transacción)', async () => {
-      fake.fallar = { tabla: 'compras_items', op: 'insert' };
-      const r = await http('POST', '/api/compras', {
-        token: token(IDS.cliente, 'customer'), body: { items: [{ producto_id: IDS.tenis, size: '26', quantity: 1 }] },
+    it('CORREGIDO P12 (DEF-01): con la MISMA Idempotency-Key el reintento devuelve la compra original', async () => {
+      const cuerpo = JSON.stringify({ items: [{ producto_id: IDS.tenis, size: '26', quantity: 1 }] });
+      const enviar = () => fetch(`${base}/api/compras`, {
+        method: 'POST', body: cuerpo,
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token(IDS.cliente, 'customer')}`, 'idempotency-key': 'compra-practica12-0001' },
       });
-      expect(r.status).toBe(400);
-      const huerfanas = fake.tabla('compras').filter((c) => c.user_id === IDS.cliente);
-      expect(huerfanas).toHaveLength(1); // la cabecera SÍ se guardó
-      expect(fake.tabla('compras_items')).toHaveLength(0); // sin renglones
-      expect(fake.tabla('productos').find((p) => p.id === IDS.tenis)!.stock).toBe(5);
+      const r1 = await enviar();
+      const r2 = await enviar();
+      const [c1, c2] = [await r1.json(), await r2.json()];
+      expect([r1.status, r2.status]).toEqual([201, 201]);
+      expect(c2.id).toBe(c1.id);
+      expect(r2.headers.get('idempotent-replayed')).toBe('true');
+      expect(fake.tabla('compras').filter((c) => c.user_id === IDS.cliente)).toHaveLength(1);
+      expect(fake.tabla('productos').find((p) => p.id === IDS.tenis)!.stock).toBe(4); // se descontó una sola vez
     });
 
-    it('si falla el UPDATE de stock la compra se confirma igual (error ignorado)', async () => {
-      fake.fallar = { tabla: 'productos', op: 'update' };
-      const r = await http('POST', '/api/compras', {
-        token: token(IDS.cliente, 'customer'), body: { items: [{ producto_id: IDS.tenis, size: '26', quantity: 2 }] },
+    it('Idempotency-Key con formato inválido -> 400', async () => {
+      const r = await fetch(`${base}/api/compras`, {
+        method: 'POST', body: JSON.stringify({ items: [{ producto_id: IDS.tenis, size: '26', quantity: 1 }] }),
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token(IDS.cliente, 'customer')}`, 'idempotency-key': 'x' },
       });
-      expect(r.status).toBe(201);
-      expect(fake.tabla('productos').find((p) => p.id === IDS.tenis)!.stock).toBe(5); // no se descontó
+      expect(r.status).toBe(400);
+    });
+
+    it('CORREGIDO P12 (DEF-08): si falla un renglón, la transacción se revierte completa', async () => {
+      fake.fallar = { tabla: 'compras_items', op: 'insert' };
+      const r = await http('POST', '/api/compras', {
+        token: token(IDS.cliente, 'customer'), body: { items: [{ producto_id: IDS.tenis, size: '26', quantity: 1 }], direccion: DIRECCION },
+      });
+      expect(r.status).toBe(500);
+      expect(fake.tabla('compras').filter((c) => c.user_id === IDS.cliente)).toHaveLength(0); // sin cabecera huérfana
+      expect(fake.tabla('compras_items')).toHaveLength(0);
+      expect(fake.tabla('usuarios_direcciones')).toHaveLength(0); // la dirección también se revirtió
+      expect(fake.tabla('productos').find((p) => p.id === IDS.tenis)!.stock).toBe(5);
     });
   });
 });

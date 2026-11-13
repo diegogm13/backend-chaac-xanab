@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ComprasService } from './compras.service';
 import { SupabaseService } from '../supabase/supabase.service';
 
@@ -26,55 +26,62 @@ const COMPRA   = { id: 'compra-uuid-1', total: 4000, status: 'pendiente', create
 describe('ComprasService', () => {
   let service: ComprasService;
   let mockFrom: jest.Mock;
+  let mockRpc: jest.Mock;
 
   beforeEach(async () => {
     mockFrom = jest.fn();
+    mockRpc = jest.fn();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ComprasService,
-        { provide: SupabaseService, useValue: { db: { from: mockFrom } } },
+        { provide: SupabaseService, useValue: { db: { from: mockFrom, rpc: mockRpc } } },
       ],
     }).compile();
     service = module.get<ComprasService>(ComprasService);
   });
 
-  describe('create', () => {
-    it('crea la compra y descuenta el stock correctamente', async () => {
-      mockFrom
-        .mockReturnValueOnce(buildChain([PRODUCTO]))    // select productos
-        .mockReturnValueOnce(buildChain(COMPRA))         // insert compra
-        .mockReturnValueOnce(buildChain(null))           // insert items
-        .mockReturnValueOnce(buildChain(null));          // update stock
+  // Práctica 12: create() hace UNA llamada a la función transaccional crear_compra.
+  describe('create (RPC crear_compra)', () => {
+    const DTO = { items: [{ producto_id: 'prod-uuid-1', size: '27', quantity: 2 }] };
+    const OK = { repetida: false, compra: { id: 'compra-uuid-1', total: 4000, status: 'pendiente' }, items: [{ name: 'Air Max' }] };
 
-      const result = await service.create(USUARIO, {
-        items: [{ producto_id: 'prod-uuid-1', size: '27', quantity: 2 }],
-      });
-
-      expect((result as { total: number }).total).toBe(4000);
+    it('una sola llamada RPC con los parámetros correctos y devuelve la compra con sus items', async () => {
+      mockRpc.mockResolvedValueOnce({ data: OK, error: null });
+      const r = await service.create(USUARIO, DTO, 'llave-idem-123');
+      expect(mockRpc).toHaveBeenCalledTimes(1);
+      expect(mockRpc).toHaveBeenCalledWith('crear_compra', expect.objectContaining({
+        p_user_id: USUARIO, p_idempotency_key: 'llave-idem-123', p_items: DTO.items,
+      }));
+      expect(mockFrom).not.toHaveBeenCalled();
+      expect(r.repetida).toBe(false);
+      expect(r.compra.total).toBe(4000);
+      expect(r.compra.items).toHaveLength(1);
     });
 
-    it('lanza BadRequestException si stock insuficiente', async () => {
-      const productoSinStock = { ...PRODUCTO, stock: 1 };
-      mockFrom.mockReturnValueOnce(buildChain([productoSinStock]));
-
-      await expect(
-        service.create(USUARIO, {
-          items: [{ producto_id: 'prod-uuid-1', size: '27', quantity: 5 }],
-        }),
-      ).rejects.toThrow(BadRequestException);
+    it('stock insuficiente (P0001) → ConflictException 409', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'Stock insuficiente' } });
+      await expect(service.create(USUARIO, DTO)).rejects.toThrow(ConflictException);
     });
 
-    it('lanza BadRequestException si el producto no existe', async () => {
-      mockFrom.mockReturnValueOnce(buildChain([]));
+    it('producto inexistente (P0002) → NotFoundException 404', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { code: 'P0002', message: 'no encontrado' } });
+      await expect(service.create(USUARIO, DTO)).rejects.toThrow(NotFoundException);
+    });
 
-      await expect(
-        service.create(USUARIO, {
-          items: [{ producto_id: 'uuid-fake', size: '27', quantity: 1 }],
-        }),
-      ).rejects.toThrow(BadRequestException);
+    it('error de infraestructura → 500 genérico (ya no 400 con el mensaje interno)', async () => {
+      mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'TypeError: fetch failed' } });
+      await expect(service.create(USUARIO, DTO)).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('carrera de idempotencia (23505) → repite la llamada y devuelve la compra que ganó', async () => {
+      mockRpc
+        .mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'duplicate key' } })
+        .mockResolvedValueOnce({ data: { ...OK, repetida: true }, error: null });
+      const r = await service.create(USUARIO, DTO, 'llave-idem-123');
+      expect(mockRpc).toHaveBeenCalledTimes(2);
+      expect(r.repetida).toBe(true);
     });
   });
-
   describe('findOne', () => {
     it('retorna la compra si el usuario es el dueño', async () => {
       const compraConUser = { ...COMPRA, user_id: USUARIO, compras_items: [] };
