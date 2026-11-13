@@ -39,10 +39,9 @@ async function borrar() {
   const { data: p } = await db.from('productos').select('id').eq('name', PRODUCTO).maybeSingle();
   const res = {};
   if (u) {
-    const { data: compras } = await db.from('compras').select('id').eq('user_id', u.id);
-    const ids = (compras ?? []).map((c) => c.id);
-    if (ids.length) res.compras_items = (await db.from('compras_items').delete().in('compra_id', ids).select('id')).data?.length;
-    res.compras = (await db.from('compras').delete().eq('user_id', u.id).select('id')).data?.length;
+    // compras_items tiene ON DELETE CASCADE sobre compra_id: borrar la cabecera borra sus renglones.
+    const { count } = await db.from('compras').delete({ count: 'exact' }).eq('user_id', u.id);
+    res.compras = count;
     res.direcciones = (await db.from('usuarios_direcciones').delete().eq('user_id', u.id).select('id')).data?.length;
     res.bitacora = (await db.from('bitacora').delete().eq('usuario_id', u.id).select('id')).data?.length;
     res.usuario = (await db.from('usuarios').delete().eq('id', u.id).select('id')).data?.length;

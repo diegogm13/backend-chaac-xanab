@@ -1,0 +1,189 @@
+﻿node.exe : PASS src/webauthn/webauthn.service.spec.ts
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/webaut...service.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  WebAuthnService
+    generateRegistrationChallenge
+      √ retorna opciones de registro si el usuario existe y no tiene credencial (14 ms)
+      √ lanza NotFoundException si el usuario no existe (14 ms)
+      √ lanza ConflictException si ya tiene credencial registrada (2 ms)
+    generateLoginChallenge
+      √ lanza NotFoundException si el usuario no tiene credencial (2 ms)
+      √ lanza NotFoundException si el usuario no existe (2 ms)
+    consumeChallenge (via verifyLogin)
+      √ lanza BadRequestException si no hay challenge activo (2 ms)
+
+PASS src/admin/admin-productos.service.spec.ts
+  AdminProductosService
+    ajustarStock
+      √ incrementa el stock correctamente (4 ms)
+      √ lanza BadRequestException si el stock resultante es negativo (9 ms)
+      √ lanza NotFoundException si el producto no existe (2 ms)
+    remove
+      √ hace soft delete correctamente (1 ms)
+      √ lanza NotFoundException si el producto no existe (1 ms)
+    create con imagen
+      √ sube imagen a Cloudinary y guarda la URL en el producto (3 ms)
+
+PASS src/auth/auth.service.spec.ts
+  AuthService
+    register
+      √ crea el usuario y devuelve un mensaje cuando el email es nuevo (104 ms)
+      √ lanza ConflictException si el email ya existe (16 ms)
+    login
+      √ devuelve token con credenciales correctas y registra LOGIN en bitácora (6 ms)
+      √ lanza UnauthorizedException si el usuario no existe (1 ms)
+      √ rechaza el login de una cuenta desactivada (3 ms)
+      √ rechaza el login de una cuenta eliminada (soft delete) (3 ms)
+      √ rechaza el login mientras la cuenta esté bloqueada (locked_until futuro) (4 ms)
+      √ incrementa failed_login_attempts con contraseña incorrecta (sin llegar al límite) (5 ms)
+      √ bloquea la cuenta al llegar al máximo de intentos fallidos (4 ms)
+    changePassword
+      √ actualiza la contraseña y registra CAMBIO_PASSWORD (70 ms)
+      √ lanza UnauthorizedException si la contraseña actual es incorrecta (4 ms)
+    logout
+      √ registra LOGOUT en la bitácora (1 ms)
+
+PASS src/productos/productos.service.spec.ts
+  ProductosService
+    findOne
+      √ lanza NotFoundException si el producto no existe (11 ms)
+      √ retorna el producto si existe (2 ms)
+    findAll sin filtros
+      √ retorna lista vacía si no hay productos (1 ms)
+
+PASS src/admin/admin-usuarios.service.spec.ts
+  AdminUsuariosService
+    createUser
+      √ crea el usuario cuando el rol existe y registra ALTA_USUARIO (81 ms)
+      √ lanza ConflictException si el correo ya existe (12 ms)
+      √ lanza BadRequestException si el rol no existe (2 ms)
+    setEstado
+      √ desactiva un usuario y registra DESACTIVAR_USUARIO (1 ms)
+      √ lanza NotFoundException si el usuario no existe o está eliminado (1 ms)
+    deleteUser (eliminación permanente)
+      √ ejecuta DELETE y registra BAJA_USUARIO (1 ms)
+    updateRole
+      √ registra CAMBIO_ROL cuando el rol cambia (2 ms)
+      √ lanza BadRequestException si el rol no existe (2 ms)
+
+PASS src/practica11/http.e2e.spec.ts
+  Práctica 11 — Endpoints HTTP (White Box)
+    WEB-01 respuestas exitosas
+      √ 200 GET /api/productos: sólo activos, estructura JSON consistente (25 ms)
+      √ 200 GET /api/productos/:id existente (4 ms)
+      √ 201 POST /api/auth/register: crea usuario, no devuelve la contraseña ni el hash (175 ms)
+      √ 201 POST /api/auth/login devuelve sólo { token } y el JWT trae rol (8 ms)
+      √ 200 GET /api/auth/me no expone password_hash (3 ms)
+      √ 201 POST /api/compras: el servidor calcula el total y descuenta stock (7 ms)
+    WEB-02 / WEB-03 errores y validación del backend
+      √ 400 register: email inválido -> message[] y nada insertado (3 ms)
+      √ 400 register: contraseña débil -> message[] y nada insertado (3 ms)
+      √ 400 register: nombre vacío -> message[] y nada insertado (2 ms)
+      √ 400 register: campo no permitido (forbidNonWhitelisted) -> message[] y nada insertado (2 ms)
+      √ 400 JSON mal formado (5 ms)
+      √ 409 register con correo existente (sin importar mayúsculas) (3 ms)
+      √ 400 POST /api/compras: items vacío (3 ms)
+      √ 400 POST /api/compras: quantity 0 (límite) (3 ms)
+      √ 400 POST /api/compras: producto_id no UUID (2 ms)
+      √ 400 POST /api/compras: size vacío (2 ms)
+      √ quantity 1 (límite válido) -> 201 (2 ms)
+      √ CORREGIDO P12 (OBS-04): stock insuficiente responde 409 Conflict (3 ms)
+      √ 404 GET /api/productos/:id inexistente y producto inactivo (2 ms)
+      √ 404 GET /api/compras/:id inexistente (2 ms)
+      √ DEFECTO DEF-05: GET /api/productos/abc (id no UUID) -> 500 en vez de 400/404 (5 ms)
+    WEB-04 autenticación (401) vs autorización (403)
+      √ 401 sin token (1 ms)
+      √ 401 token con firma inválida (1 ms)
+      √ 401 token expirado (2 ms)
+      √ 401 login: contraseña errónea y correo inexistente dan el MISMO mensaje (4 ms)
+      √ 401 EMAIL_NOT_VERIFIED (3 ms)
+      √ 401 ACCOUNT_LOCKED al 5.º intento fallido y bloquea aun con la contraseña correcta (13 ms)
+      √ 403 cliente autenticado intentando ver la compra de otro usuario (3 ms)
+      √ 401 vs 403 vs 200 en /api/admin/productos (4 ms)
+      √ HALLAZGO: DELETE /api/admin/productos/:id responde 200 con cuerpo (no 204) y es borrado lógico (37 ms)
+    500 y errores de infraestructura
+      √ 500 GET /api/productos con Supabase caído, sin filtrar el detalle (23 ms)
+      √ CORREGIDO P12 (DEF-06): con Supabase caído, /api/compras/mis-compras responde 500 genérico (2 ms)
+    Caminos de ComprasService.create() y ProductosService
+      √ dirección inline: 1.ª compra INSERTA, 2.ª ACTUALIZA la misma dirección principal (11 ms)
+      √ direccion_id explícito se usa tal cual; sin dirección -> null (5 ms)
+      √ producto inactivo en la compra -> 404 "no encontrado o inactivo" y nada se guarda (3 ms)
+      √ CORREGIDO P12: Supabase caído durante la compra -> 500 genérico, sin datos parciales (2 ms)
+      √ findOne con error de Supabase -> 500 genérico; id no UUID -> 400 (3 ms)
+      √ P12: historial paginado ?limite=1 y cursor ?antes=; parámetros inválidos -> 400 (49 ms)
+      √ GET /api/productos usa caché: la 2.ª petición no consulta Supabase (8 ms)
+      √ 401 JWT bien firmado pero sin "sub" (JwtStrategy.validate) (3 ms)
+      √ RolesGuard sin @Roles() deja pasar (camino requiredRoles = undefined)
+      √ buscarPorTermino(): sanitiza caracteres que alteran el filtro .or() de PostgREST (1 ms)
+      √ filtros: ?badge válido -> 200; ?badge inválido -> 400; ?categoria_slug -> 200 (6 ms)
+    DB-06 / transacciones en POST /api/compras
+      √ CORREGIDO P12 (DEF-03): dos compras simultáneas del último par -> una 201 y una 409, sin sobreventa (31 ms)
+      √ sin Idempotency-Key el mismo POST repetido crea 2 compras (comportamiento del cliente web) (3 ms)
+      √ CORREGIDO P12 (DEF-01): con la MISMA Idempotency-Key el reintento devuelve la compra original (6 ms)
+      √ Idempotency-Key con formato inválido -> 400 (2 ms)
+      √ CORREGIDO P12 (DEF-08): si falla un renglón, la transacción se revierte completa (3 ms)
+
+[Nest] 18740  - 13/11/2026, 12:31:05 p.m.   ERROR [ComprasService] crear_compra falló:  TypeError: fetch failed
+PASS src/compras/compras.service.spec.ts
+  ComprasService
+    create (RPC crear_compra)
+      √ una sola llamada RPC con los parámetros correctos y devuelve la compra con sus items (4 ms)
+      √ stock insuficiente (P0001) → ConflictException 409 (19 ms)
+      √ producto inexistente (P0002) → NotFoundException 404 (2 ms)
+      √ error de infraestructura → 500 genérico (ya no 400 con el mensaje interno) (1 ms)
+      √ carrera de idempotencia (23505) → repite la llamada y devuelve la compra que ganó (1 ms)
+    findOne
+      √ retorna la compra si el usuario es el dueño (1 ms)
+      √ lanza ForbiddenException si el usuario no es el dueño (1 ms)
+      √ lanza NotFoundException si la compra no existe
+
+  console.error
+    [Bitacora] Error al registrar acción: db error
+
+      27 |         user_agent:    params.userAgent ?? null,
+      28 |       });
+    > 29 |       if (error) console.error('[Bitacora] Error al registrar acción:', error.message);
+         |                          ^
+      30 |     } catch (err) {
+      31 |       console.error('[Bitacora] Error inesperado al registrar acción:', err);
+      32 |     }
+
+      at BitacoraService.registrar (bitacora/bitacora.service.ts:29:26)
+      at Object.<anonymous> (bitacora/bitacora.service.spec.ts:37:7)
+
+PASS src/bitacora/bitacora.service.spec.ts
+  BitacoraService
+    registrar
+      √ inserta un registro en la bitácora (4 ms)
+      √ no lanza si la inserción falla (no debe romper el flujo principal) (22 ms)
+    findAll
+      √ devuelve resultados paginados aplicando filtros (1 ms)
+
+PASS src/supabase/supabase.service.spec.ts
+  SupabaseService
+    √ should initialize the Supabase client (7 ms)
+    √ should expose the db client with expected methods (2 ms)
+
+PASS src/roles/roles.service.spec.ts
+  RolesService
+    create
+      √ crea un rol nuevo (3 ms)
+      √ lanza ConflictException si el rol ya existe (10 ms)
+    findPermisosByRole
+      √ lanza NotFoundException si el rol no existe (2 ms)
+      √ devuelve los permisos asociados al rol (1 ms)
+    updateRolePermisos
+      √ reemplaza los permisos del rol (delete + insert) (2 ms)
+    roleExists
+      √ devuelve true si el rol existe (1 ms)
+      √ devuelve false si el rol no existe (1 ms)
+
+Test Suites: 10 passed, 10 total
+Tests:       103 passed, 103 total
+Snapshots:   0 total
+Time:        12.196 s, estimated 198 s
+Ran all test suites.
