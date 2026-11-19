@@ -1,0 +1,66 @@
+# Prácticas 13 y 14 — Integración continua del backend NestJS de CHAAC XANAB.
+# Corre en cada push y pull request. NO despliega nada: la producción la publica
+# Vercel desde la rama master; este flujo sólo compila y ejecuta las pruebas.
+# Las pruebas no usan credenciales: Supabase se sustituye por un doble en memoria
+# (src/practica11/fake-supabase.ts) y JWT usa un secreto de prueba.
+name: CI backend NestJS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    name: Compilación + pruebas unitarias e integración HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Dependencias (exactas, desde package-lock.json)
+        run: npm ci
+
+      - name: Compilación de producción (tsc -p tsconfig.build.json)
+        run: npx tsc -p tsconfig.build.json --noEmit
+
+      - name: Pruebas unitarias e integración HTTP (Jest) con cobertura
+        run: npx jest --runInBand --ci --coverage --coverageReporters=text-summary --coverageReporters=lcov --json --outputFile=resultados_jest.json
+
+      - name: Resumen de resultados
+        if: always()
+        run: |
+          node -e "
+          const fs = require('fs');
+          if (!fs.existsSync('resultados_jest.json')) process.exit(0);
+          const r = JSON.parse(fs.readFileSync('resultados_jest.json', 'utf8'));
+          const seg = ((Date.now() - r.startTime) / 1000).toFixed(1);
+          const fallidas = r.testResults.flatMap(s => s.assertionResults.filter(a => a.status === 'failed').map(a => a.fullName));
+          const out = ['## Resultados de pruebas (backend)', '', '| Suites | Aprobadas | Fallidas | Total | Tiempo aprox. (s) |', '|---|---|---|---|---|',
+            '| ' + r.numPassedTestSuites + '/' + r.numTotalTestSuites + ' | ' + r.numPassedTests + ' | ' + r.numFailedTests + ' | ' + r.numTotalTests + ' | ' + seg + ' |'];
+          if (fallidas.length) out.push('', '### Pruebas fallidas', ...fallidas.map(f => '- ' + f));
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
+          console.log(out.join('\n'));
+          "
+
+      - name: Guardar resultados y cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas-backend
+          path: |
+            resultados_jest.json
+            coverage/lcov.info
+          if-no-files-found: ignore
