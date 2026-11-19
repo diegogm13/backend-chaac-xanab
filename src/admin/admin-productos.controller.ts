@@ -1,7 +1,7 @@
 import {
   Controller, Get, Post, Put, Delete, Patch, Param, Body,
   UseGuards, UseInterceptors, UploadedFile, ParseFilePipe,
-  MaxFileSizeValidator, Optional, BadRequestException,
+  MaxFileSizeValidator, Optional, BadRequestException, ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -41,7 +41,7 @@ export class AdminProductosController {
   @Put(':id')
   @UseInterceptors(FileInterceptor('image', { storage: memoryStorage(), fileFilter: imageFilter }))
   update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateProductoDto,
     @Optional() @UploadedFile(new ParseFilePipe({ validators: imageValidators, fileIsRequired: false }))
     file?: Express.Multer.File,
@@ -50,12 +50,12 @@ export class AdminProductosController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.adminProductosService.remove(id);
   }
 
   @Patch(':id/stock')
-  ajustarStock(@Param('id') id: string, @Body() dto: AjusteStockDto) {
+  ajustarStock(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: AjusteStockDto) {
     return this.adminProductosService.ajustarStock(id, dto);
   }
 }

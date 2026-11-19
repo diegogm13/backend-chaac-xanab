@@ -8,6 +8,7 @@ async function bootstrap() {
 
   // Cabeceras de seguridad HTTP (HSTS, X-Content-Type-Options, etc.)
   app.use(helmet());
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
 
   // Necesario para que req.ip resuelva la IP real detrás de un proxy (Vercel, etc.)
   app.getHttpAdapter().getInstance().set('trust proxy', 1);

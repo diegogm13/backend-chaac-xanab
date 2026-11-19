@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Put, Delete, Param, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Param, Body, Req, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminUsuariosService } from './admin-usuarios.service';
 import { UpdateRoleDto, CreateAdminUserDto, UpdateAdminUserDto, UpdateEstadoDto, AdminChangePasswordDto } from './dto/admin-usuario.dto';
@@ -27,7 +27,7 @@ export class AdminUsuariosController {
 
   @Put(':id')
   updateUser(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateAdminUserDto,
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
@@ -37,7 +37,7 @@ export class AdminUsuariosController {
 
   @Patch(':id/role')
   updateRole(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateRoleDto,
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
@@ -47,7 +47,7 @@ export class AdminUsuariosController {
 
   @Patch(':id/estado')
   setEstado(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateEstadoDto,
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
@@ -57,7 +57,7 @@ export class AdminUsuariosController {
 
   @Patch(':id/password')
   changePassword(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: AdminChangePasswordDto,
     @CurrentUser() admin: JwtPayload,
     @Req() req: Request,
@@ -66,7 +66,7 @@ export class AdminUsuariosController {
   }
 
   @Delete(':id')
-  deleteUser(@Param('id') id: string, @CurrentUser() admin: JwtPayload, @Req() req: Request) {
+  deleteUser(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() admin: JwtPayload, @Req() req: Request) {
     return this.adminUsuariosService.deleteUser(id, this.actorFrom(admin, req));
   }
 

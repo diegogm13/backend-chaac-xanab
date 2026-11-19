@@ -4,9 +4,14 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../src/app.module';
 import express from 'express';
+import helmet from 'helmet';
 import { IncomingMessage, ServerResponse } from 'http';
 
 const expressApp = express();
+// DEF-09 (Práctica 11): este es el entry point que corre en Vercel y no aplicaba
+// helmet (sólo src/main.ts lo hacía): faltaban nosniff, X-Frame-Options, etc.
+expressApp.disable('x-powered-by');
+expressApp.use(helmet());
 let initialized = false;
 
 async function bootstrap() {

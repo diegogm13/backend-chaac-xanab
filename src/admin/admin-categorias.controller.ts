@@ -1,7 +1,7 @@
 import {
   Controller, Post, Put, Delete, Param, Body,
   UseGuards, UseInterceptors, UploadedFile, ParseFilePipe,
-  MaxFileSizeValidator, Optional, BadRequestException,
+  MaxFileSizeValidator, Optional, BadRequestException, ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -36,7 +36,7 @@ export class AdminCategoriasController {
   @Put(':id')
   @UseInterceptors(FileInterceptor('image', { storage: memoryStorage(), fileFilter: imageFilter }))
   update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateCategoriaDto,
     @Optional() @UploadedFile(new ParseFilePipe({ validators: imageValidators, fileIsRequired: false }))
     file?: Express.Multer.File,
@@ -45,7 +45,7 @@ export class AdminCategoriasController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.adminCategoriasService.remove(id);
   }
 }

@@ -248,10 +248,11 @@ describe('Práctica 11 — Endpoints HTTP (White Box)', () => {
       expect(r.status).toBe(404);
     });
 
-    it('DEFECTO DEF-05: GET /api/productos/abc (id no UUID) -> 500 en vez de 400/404', async () => {
+    it('CORREGIDO (DEF-05): GET /api/productos/abc (id no UUID) -> 400 con mensaje de validación', async () => {
       const r = await http('GET', '/api/productos/abc');
-      expect(r.status).toBe(500);
-      expect(r.json).toEqual({ statusCode: 500, message: 'Internal server error' }); // no filtra detalles
+      expect(r.status).toBe(400);
+      expect(r.json.message).toContain('uuid');
+      expect((await http('GET', '/api/admin/productos/abc', { token: token(IDS.admin, 'admin') })).status).not.toBe(500);
     });
   });
 
